@@ -11,6 +11,7 @@
 \usepackage{tikz}
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, decorations.pathreplacing}
 \usepackage{booktabs}
+\usepackage{multirow}
 \usepackage{caption}
 \usepackage{parskip}
 \usepackage{titlesec}
@@ -78,6 +79,8 @@
 \tableofcontents
 \newpage
 
+\section*{Notes}
+All files and additional source files may be found on the associated \href{https://github.com/Prachannagven/commnet-assignment-1}{GitHub repository}. All programs were written/run on a Ubuntu system.
 
 \section{Quesition 1}
 \subsection{Introduction}
@@ -99,8 +102,6 @@ of data (PDU), and the header string used in this program.
 
 \begin{table}[h!]
 	\centering
-	\caption{OSI Layers, PDU names, and simulated headers}
-	\label{tab:osi}
 	\begin{tabular}{clll}
 		\toprule
 		\textbf{Layer} & \textbf{Name} & \textbf{PDU} & \textbf{Simulated Header}                             \\
@@ -114,11 +115,9 @@ of data (PDU), and the header string used in this program.
 		1              & Physical      & Bits         & \texttt{[PHY: ENC=NRZ SIGNAL=DIGITAL]}                \\
 		\bottomrule
 	\end{tabular}
+	\caption{OSI Layers, PDU names, and simulated headers}
+	\label{tab:osi}
 \end{table}
-
-% ═══════════════════════════════════════════════════════════════════════════
-\subsection{Program Design}
-% ═══════════════════════════════════════════════════════════════════════════
 
 \subsection{Design Decisions}
 
@@ -257,25 +256,33 @@ Running the program with the input \texttt{"Hello, Network!"} gives:
 
 \begin{lstlisting}[style=cstyle, language={}, caption={Sample program output}]
 Enter application message (up to 80 characters):
-> Hello, Network!
+> hello world!
 
 === OSI Encapsulation ===
 
-[Layer 7 - Application]  PDU: [APP: HTTP GET /index.html]Hello, Network!
+[Layer 7 - Application]  PDU:
+[APP: HTTP GET /index.html]hello world!
 
-[Layer 6 - Presentation] PDU: [PRES: ENC=UTF-8 FORMAT=ASCII COMPRESS=NONE][APP: HTTP GET /index.html]Hello, Network!
+[Layer 6 - Presentation] PDU:
+[PRES: ENC=UTF-8 FORMAT=ASCII COMPRESS=NONE][APP: HTTP GET /index.html]hello world!
 
-[Layer 5 - Session]      PDU: [SESS: ID=A1B2C3 SEQ=001 TYPE=DATA][PRES: ...]...[APP: ...]Hello, Network!
+[Layer 5 - Session]      PDU:
+[SESS: ID=A1B2C3 SEQ=001 TYPE=DATA][PRES: ENC=UTF-8 FORMAT=ASCII COMPRESS=NONE][APP: HTTP GET /index.html]hello world!
 
-[Layer 4 - Transport]    Segment: [TRAN: TCP SRC=1234 DST=80 SEQ=100 ACK=0][SESS: ...]...[APP: ...]Hello, Network!
+[Layer 4 - Transport]    Segment:
+[TRAN: TCP SRC=1234 DST=80 SEQ=100 ACK=0][SESS: ID=A1B2C3 SEQ=001 TYPE=DATA][PRES: ENC=UTF-8 FORMAT=ASCII COMPRESS=NONE][APP: HTTP GET /index.html]hello world!
 
-[Layer 3 - Network]      Packet: [NET: SRC=192.168.1.1 DST=10.0.0.1 TTL=64][TRAN: ...]...Hello, Network!
+[Layer 3 - Network]      Packet:
+[NET: SRC=192.168.1.1 DST=10.0.0.1 TTL=64][TRAN: TCP SRC=1234 DST=80 SEQ=100 ACK=0][SESS: ID=A1B2C3 SEQ=001 TYPE=DATA][PRES: ENC=UTF-8 FORMAT=ASCII COMPRESS=NONE][APP: HTTP GET /index.html]hello world!
 
-[Layer 2 - Data Link]    Frame: [DL: SRC=AA:BB:CC DST=11:22:33 TYPE=IPv4][NET: ...]...Hello, Network!
+[Layer 2 - Data Link]    Frame:
+[DL: SRC=AA:BB:CC DST=11:22:33 TYPE=IPv4][NET: SRC=192.168.1.1 DST=10.0.0.1 TTL=64][TRAN: TCP SRC=1234 DST=80 SEQ=100 ACK=0][SESS: ID=A1B2C3 SEQ=001 TYPE=DATA][PRES: ENC=UTF-8 FORMAT=ASCII COMPRESS=NONE][APP: HTTP GET /index.html]hello world![FCS: 0xF47B14F0]
+                         FCS (CRC-32): 0xF47B14F0
 
-[Layer 1 - Physical]     Bits: [PHY: ENC=NRZ SIGNAL=DIGITAL][DL: ...]...Hello, Network!
+[Layer 1 - Physical]     Bits:
+[PHY: ENC=NRZ SIGNAL=DIGITAL][DL: SRC=AA:BB:CC DST=11:22:33 TYPE=IPv4][NET: SRC=192.168.1.1 DST=10.0.0.1 TTL=64][TRAN: TCP SRC=1234 DST=80 SEQ=100 ACK=0][SESS: ID=A1B2C3 SEQ=001 TYPE=DATA][PRES: ENC=UTF-8 FORMAT=ASCII COMPRESS=NONE][APP: HTTP GET /index.html]hello world![FCS: 0xF47B14F0]
 
-=== Transmission complete: 271 bytes on the wire ===
+=== Transmission complete: 288 bytes on the wire ===
 \end{lstlisting}
 
 % ═══════════════════════════════════════════════════════════════════════════
@@ -319,6 +326,29 @@ session tracking at Layer 5, port and sequence numbers at Layer 4, IP
 addresses at Layer 3, MAC addresses at Layer 2, and signalling info at
 Layer 1.
 
+Table~\ref{tab:bytecounts} shows the cumulative PDU size at each layer for
+the sample input \texttt{"Hello, Network!"} (15~bytes).
+
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{clcr}
+		\toprule
+		\textbf{Layer} & \textbf{Name} & \textbf{Header/Trailer (bytes)} & \textbf{Cumulative PDU (bytes)} \\
+		\midrule
+		--             & User Input    & 15 (message)                    & 15                              \\
+		7              & Application   & 27                              & 42                              \\
+		6              & Presentation  & 44                              & 86                              \\
+		5              & Session       & 35                              & 121                             \\
+		4              & Transport     & 41                              & 162                             \\
+		3              & Network       & 42                              & 204                             \\
+		2              & Data Link     & 41 + 17 (FCS)                   & 262                             \\
+		1              & Physical      & 29                              & 291                             \\
+		\bottomrule
+	\end{tabular}
+	\caption{Byte count at each OSI layer (sample message: \texttt{"Hello, Network!"})}
+	\label{tab:bytecounts}
+\end{table}
+
 \newpage
 \section{Question 2}
 \subsection{Wireshark Protocols}
@@ -326,42 +356,44 @@ Layer 1.
 Make a list of such protocols, identify the layer to which they belong, and briefly explain (in 1-2 lines) the function of each protocol.
 
 \textbf{Answer: }
-The protocols listed under the "protocol" column are as follows:
-\begin{enumerate}
-	\item \textbf{ARP - Layer 2/3 (Network Interface / Network)} - Maps an IPv4 address to a MAC address on a local network.
+The protocols listed under the "protocol" column are shown below, grouped by their OSI layer.
 
-	\item \textbf{mDNS - Layer 7 (Application)} - Resolves hostnames locally using multicast without a DNS server.
+\subsubsection{Layer 2 -- Data Link}
+\begin{itemize}
+	\item \textbf{LLC} -- Identifies upper-layer protocols within Ethernet frames.
+	\item \textbf{ARP} -- Maps an IPv4 address to a MAC address on a local network.
+\end{itemize}
 
-	\item \textbf{IGMPv2 - Layer 3 (Network)} - Manages IPv4 multicast group membership.
+\subsubsection{Layer 3 -- Network}
+\begin{itemize}
+	\item \textbf{IGMPv2} -- Manages IPv4 multicast group membership.
+	\item \textbf{IGMPv3} -- Supports source-specific IPv4 multicast membership.
+	\item \textbf{ICMPv6} -- Provides IPv6 error reporting and neighbor discovery.
+	\item \textbf{VRRP} -- Provides gateway redundancy using a virtual IP address.
+\end{itemize}
 
-	\item \textbf{ICMPv6 - Layer 3 (Network)} - Provides IPv6 error reporting and neighbor discovery.
+\subsubsection{Layer 4 -- Transport}
+\begin{itemize}
+	\item \textbf{TCP} -- Provides reliable, connection-oriented data transmission.
+	\item \textbf{UDP} -- Provides fast, connectionless data transmission.
+\end{itemize}
 
-	\item \textbf{TCP - Layer 4 (Transport)} - Provides reliable, connection-oriented data transmission.
+\subsubsection{Layer 6/7 -- Presentation / Application}
+\begin{itemize}
+	\item \textbf{TLSv1.2} -- Encrypts and secures application data.
+	\item \textbf{TLSv1.3} -- Provides faster and more secure encryption than TLS 1.2.
+\end{itemize}
 
-	\item \textbf{SSDP - Layer 7 (Application)} - Discovers devices and services on a local network.
-
-	\item \textbf{LLC - Layer 2 (Data Link)} - Identifies upper-layer protocols within Ethernet frames.
-
-	\item \textbf{VRRP - Layer 3 (Network)} - Provides gateway redundancy using a virtual IP address.
-
-	\item \textbf{DHCP - Layer 7 (Application)} - Automatically assigns IP configuration to clients.
-
-	\item \textbf{TLSv1.2 - Layer 6/7 (Presentation/Application)} - Encrypts and secures application data.
-
-	\item \textbf{DNS - Layer 7 (Application)} - Translates domain names into IP addresses.
-
-	\item \textbf{UDP - Layer 4 (Transport)} - Provides fast, connectionless data transmission.
-
-	\item \textbf{IGMPv3 - Layer 3 (Network)} - Supports source-specific IPv4 multicast membership.
-
-	\item \textbf{NBNS - Layer 7 (Application)} - Resolves NetBIOS names to IP addresses.
-
-	\item \textbf{TLSv1.3 - Layer 6/7 (Presentation/Application)} - Provides faster and more secure encryption than TLS 1.2.
-
-	\item \textbf{HTTP - Layer 7 (Application)} - Transfers web content using a request-response model.
-
-	\item \textbf{BROWSER - Layer 7 (Application)} - Maintains shared resource lists in Windows networks.
-\end{enumerate}
+\subsubsection{Layer 7 -- Application}
+\begin{itemize}
+	\item \textbf{mDNS} -- Resolves hostnames locally using multicast without a DNS server.
+	\item \textbf{SSDP} -- Discovers devices and services on a local network.
+	\item \textbf{DHCP} -- Automatically assigns IP configuration to clients.
+	\item \textbf{DNS} -- Translates domain names into IP addresses.
+	\item \textbf{NBNS} -- Resolves NetBIOS names to IP addresses.
+	\item \textbf{HTTP} -- Transfers web content using a request-response model.
+	\item \textbf{BROWSER} -- Maintains shared resource lists in Windows networks.
+\end{itemize}
 
 \subsection{HTTP Protocl Stats}
 \textbf{Question: }Read about HTTTP protocol and its working (Reference: Section 2.1, 8.1 in Garcia).
@@ -372,10 +404,27 @@ the packet-listing window is the amount of time, in seconds, since Wireshark tra
 down menu, then select Time Display Format, then select Time-of-day.)
 
 \textbf{Answer: }
-The HTTPS GET packet was triggered at $t = 19.08404851$ and the OK packet was recieved at $t = 19.830304061$, meaning it took $0.746255551000001$ seconds for this communicaiton.
+The timing of the HTTP GET/OK exchange is summarised in Table~\ref{tab:http-timing}.
+
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{lr}
+		\toprule
+		\textbf{Event}           & \textbf{Timestamp (s)} \\
+		\midrule
+		HTTPS GET sent           & 19.084048510           \\
+		HTTP OK received         & 19.830304061           \\
+		\midrule
+		\textbf{Round-trip time} & \textbf{0.746255551 s} \\
+		\bottomrule
+	\end{tabular}
+	\caption{HTTP GET / OK Timing}
+	\label{tab:http-timing}
+\end{table}
 
 Note: I used another HTTP website (\href{http://demo.testfire.net/login.jsp}{this one}) to test HTTP, as I couldn't get the gaia website working even after turning of HTTPS3.
 
+\newpage
 \subsection{Internet Address of Gaia}
 \textbf{Question}
 What is the Internet address of the gaia.cs.umass.edu (also known as www-
@@ -383,11 +432,8 @@ net.cs.umass.edu)? What is the Internet address of the computer that sent the HT
 message (i.e., your computer)?
 
 \textbf{Answer: }
-Since the website is a https secured website, we use the dns filter, rather than the http filter on the wireshark protocols list. The source and destination can be found in \ref{fig:dns-website} and are as follows
-\begin{itemize}
-	\item \textbf{Source: }172.17.61.200
-	\item \textbf{Destination: }172.24.2.76
-\end{itemize}
+Since the website is a https secured website, we use the dns filter, rather than the http filter on the wireshark protocols list. The DNS query and response details are summarised in Table~\ref{tab:dns-details} and can be seen in Figure~\ref{fig:dns-website}.
+
 \begin{figure}[h!]
 	\centering
 	\includegraphics[width=0.9\textwidth]{./images/gaia-source-dest.png}
@@ -395,6 +441,26 @@ Since the website is a https secured website, we use the dns filter, rather than
 	\label{fig:dns-website}
 \end{figure}
 
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{ll}
+		\toprule
+		\textbf{Field}      & \textbf{Value}             \\
+		\midrule
+		Query Name          & \texttt{gaia.cs.umass.edu} \\
+		Query Packet No.    & 2673                       \\
+		Response Packet No. & 2720                       \\
+		Query Host          & 172.17.61.200              \\
+		DNS Server          & 172.24.2.76                \\
+		Resolved Address    & \texttt{128.119.245.12}    \\
+		Response Time       & 1.989~ms                   \\
+		\bottomrule
+	\end{tabular}
+	\caption{DNS Query and Response Details}
+	\label{tab:dns-details}
+\end{table}
+
+\newpage
 \subsection{HTTP Details}
 \textbf{Question: }Expand the information on the HTTP message in the Wireshark “Details of selected
 packet” window (see Figure 2 of the Tutorial sheet) so you can see the fields in the HTTP GET
@@ -403,13 +469,29 @@ at the right end of the information following the “User-Agent:” field in the
 message display. [This field value in the HTTP message is how a web server learns what type
 		of browser you are using.]
 
-\textbf{Answer: } You can see inFigure \ref{fig:http-browser-info}that the user agent field is populated with the browser I used, which is Mozilla Firefox. My operating system and system type is also sent, with \texttt{Ubuntu, Linux\_x86\_64} being seen.
+\textbf{Answer: } You can see in Figure \ref{fig:http-browser-info} that the user agent field is populated with the browser I used, which is Mozilla Firefox. My operating system and system type is also sent, as summarised below.
+
 \begin{figure}[h!]
 	\centering
 	\includegraphics[width=\textwidth]{./images/http-browser-info.png}
 	\caption{HTTP Browser Request Details}
 	\label{fig:http-browser-info}
 \end{figure}
+
+\begin{table}[h!]
+	\centering
+	\label{tab:user-agent}
+	\begin{tabular}{ll}
+		\toprule
+		\textbf{Field}   & \textbf{Value}  \\
+		\midrule
+		Browser          & Mozilla Firefox \\
+		Operating System & Ubuntu          \\
+		Architecture     & Linux\_x86\_64  \\
+		\bottomrule
+	\end{tabular}
+	\caption{HTTP User-Agent Details}
+\end{table}
 
 \newpage
 \subsection{TCP Stats}
@@ -420,7 +502,8 @@ What is the destination port number (the number following “Dest Port:” for t
 containing the HTTP request) to which this HTTP request is being sent?
 
 \textbf{Answer: }
-The destination port, as can be seen in Figure \ref{fig:tcp-stats-info} is 80, and it's source port is 45675.
+The port numbers for this HTTP request, as can be seen in Figure \ref{fig:tcp-stats-info}, are shown in Table~\ref{tab:tcp-ports}.
+
 
 \begin{figure}[!h]
 	\centering
@@ -428,6 +511,20 @@ The destination port, as can be seen in Figure \ref{fig:tcp-stats-info} is 80, a
 	\caption{TCP Packet Showing Destination Port}
 	\label{fig:tcp-stats-info}
 \end{figure}
+
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{ll}
+		\toprule
+		\textbf{Field}   & \textbf{Value} \\
+		\midrule
+		Source Port      & 45675          \\
+		Destination Port & 80             \\
+		\bottomrule
+	\end{tabular}
+	\caption{TCP Port Numbers for the HTTP Request}
+	\label{tab:tcp-ports}
+\end{table}
 
 Note that, in the representation of the packet, you see the port number represented as \texttt{00 50}, but that's because this value is in hex. In decimal the packet number becomes 80.
 
